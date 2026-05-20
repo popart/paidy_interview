@@ -1,5 +1,3 @@
-<img src="/paidy.png?raw=true" width=300 style="background-color:white;">
-
 # Paidy Take-Home Coding Exercises
 
 ## What to expect?
@@ -81,6 +79,3 @@ $ curl -H "token: 10dc303535874aeccc86a8251e6992f5" 'localhost:8080/rates?pair=U
 
 [{"from":"USD","to":"JPY","bid":0.61,"ask":0.82,"price":0.71,"time_stamp":"2019-01-01T00:00:00.000"}]
 ```
-
-## F.A.Q.
-[Please click here for the F.A.Q.](./README.md#faq)
