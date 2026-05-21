@@ -55,6 +55,7 @@ libraryDependencies ++= Seq(
   Libraries.catsEffect,
   Libraries.fs2,
   Libraries.http4sDsl,
+  Libraries.http4sClient,
   Libraries.http4sServer,
   Libraries.http4sCirce,
   Libraries.circeCore,

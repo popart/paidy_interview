@@ -4,6 +4,10 @@
   - coursier updates path in .profile, manually copy to .zshrc or .bashrc if needed
 - pull the one-frame docker image: https://hub.docker.com/r/paidyinc/one-frame
 
+# dependency versions
+- sbt 18
+- jdk 17
+
 # running the code
 ```
 # run the one-frame server
@@ -14,7 +18,10 @@ curl -H "token: 10dc303535874aeccc86a8251e6992f5" 'localhost:8081/rates?pair=USD
 
 # run the proxy server
 cd forex-mtl
-sbt run
+ONE_FRAME_TOKEN=my_token sbt run
+# (or for auto-restarts on file saves)
+ONE_FRAME_TOKEN=my_token sbt
+> ~run
 
 # smoke test hit the proxy server
 curl 'http://localhost:8081/rates?from=USD&to=JPY'
