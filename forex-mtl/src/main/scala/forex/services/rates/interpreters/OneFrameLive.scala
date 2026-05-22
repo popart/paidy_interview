@@ -12,9 +12,12 @@ import forex.domain.{ Price, Rate, Timestamp }
 import forex.services.rates.errors._
 import org.http4s.client.Client
 import org.http4s.Uri
+import org.typelevel.ci.CIString
+import org.http4s.client.dsl.Http4sClientDsl
+import org.http4s.Method.GET
 
 /*
- NOTES: http4s
+ NOTE: http4s
  def expect[A](uri: Uri)(implicit d: EntityDecoder[F, A]): F[A]
  - implicit means compiler searches for a matching type
  - implicit String decoder exists in EntityDecoder companion object
@@ -27,7 +30,7 @@ import org.http4s.Uri
 
  btw, cats is separate from cats-effect
  */
-class OneFrameLive[F[_]: Sync](client: Client[F], @annotation.unused config: OneFrameConfig) extends Algebra[F] {
+class OneFrameLive[F[_]: Sync](client: Client[F], config: OneFrameConfig) extends Algebra[F] with Http4sClientDsl[F] {
   override def get(pair: Rate.Pair): F[Error Either Rate] = {
     // there is cats "either" syntax to make this prettier
     val target: Either[Error, Uri] = Uri.fromString(s"http://${config.host}:${config.port}") match {
@@ -42,9 +45,10 @@ class OneFrameLive[F[_]: Sync](client: Client[F], @annotation.unused config: One
 
     // .map is from cats.syntax.functor (more generic than scala map)
     // `*>` is from cats.syntax.apply (a.k.a. "andThen")
+    // NOTE: OneFrame spec uses custom "token" header, not standard "Authorization token"
     target match {
       case Right(uri) =>
-        client.expect[String](uri).map(println) *>
+        client.expect[String](GET(uri, org.http4s.Header.Raw(CIString("token"), config.token))).map(println) *>
           Rate(pair, Price(BigDecimal(1337)), Timestamp.now).asRight[Error].pure[F]
       case Left(e) =>
         e.asLeft[Rate].pure[F]
