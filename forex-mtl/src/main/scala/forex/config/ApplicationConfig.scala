@@ -16,5 +16,6 @@ case class HttpConfig(
 case class OneFrameConfig(
     host: String,
     port: Int,
-    token: String
+    token: String,
+    ttl: FiniteDuration
 )

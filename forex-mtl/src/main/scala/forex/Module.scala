@@ -1,6 +1,7 @@
 package forex
 
 import cats.effect.{ Concurrent, Timer }
+import cats.syntax.functor._
 import forex.config.ApplicationConfig
 import forex.http.rates.RatesHttpRoutes
 import forex.services._
@@ -11,9 +12,10 @@ import org.http4s.implicits._
 import org.http4s.server.middleware.{ AutoSlash, Timeout }
 
 
-class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F]) {
-  private val ratesService: RatesService[F] = RatesServices.live[F](client, config.oneFrame)
-
+class Module[F[_]: Concurrent: Timer] private (
+    config: ApplicationConfig,
+    ratesService: RatesService[F]
+) {
   private val ratesProgram: RatesProgram[F] = RatesProgram[F](ratesService)
 
   private val ratesHttpRoutes: HttpRoutes[F] = new RatesHttpRoutes[F](ratesProgram).routes
@@ -21,10 +23,8 @@ class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[
   type PartialMiddleware = HttpRoutes[F] => HttpRoutes[F]
   type TotalMiddleware   = HttpApp[F] => HttpApp[F]
 
-  private val routesMiddleware: PartialMiddleware = {
-    { http: HttpRoutes[F] =>
-      AutoSlash(http)
-    }
+  private val routesMiddleware: PartialMiddleware = { http: HttpRoutes[F] =>
+    AutoSlash(http)
   }
 
   private val appMiddleware: TotalMiddleware = { http: HttpApp[F] =>
@@ -34,5 +34,9 @@ class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[
   private val http: HttpRoutes[F] = ratesHttpRoutes
 
   val httpApp: HttpApp[F] = appMiddleware(routesMiddleware(http).orNotFound)
+}
 
+object Module {
+  def create[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F]): F[Module[F]] =
+    RatesServices.live[F](client, config.oneFrame).map(new Module[F](config, _))
 }

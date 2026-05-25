@@ -27,6 +27,8 @@ object Currency {
     case USD => "USD"
   }
 
+  val all: List[Currency] = List(AUD, CAD, CHF, EUR, GBP, NZD, JPY, SGD, USD)
+
   def fromString(s: String): Currency = s.toUpperCase match {
     case "AUD" => AUD
     case "CAD" => CAD
