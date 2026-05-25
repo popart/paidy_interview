@@ -50,8 +50,31 @@ object OneFrameLive {
 class OneFrameLive[F[_]: Sync](client: Client[F], config: OneFrameConfig) extends Algebra[F] with Http4sClientDsl[F] {
   import OneFrameLive._
 
+  @scala.annotation.nowarn("cat=unused")
+  private def getAll(pairs: List[Rate.Pair]): F[Error Either List[Rate]] = {
+    import cats.syntax.applicative._
+    val pairValues = pairs.map(p => s"${p.from}${p.to}")
+
+    val target: Either[Error, Uri] = Uri.fromString(s"http://${config.host}:${config.port}") match {
+      case Right(uri) =>
+        Right((uri / "rates").withMultiValueQueryParams(Map("pair" -> pairValues)))
+      case Left(e) =>
+        Left(Error.OneFrameLookupFailed(e.getMessage))
+    }
+
+    target match {
+      case Right(uri) => client
+        .expect[List[OneFrameResponse]](GET(uri, org.http4s.Header.Raw(CIString("token"), config.token)))
+        .map { responses =>
+          responses.map { r =>
+            Rate(Rate.Pair(forex.domain.Currency.fromString(r.from), forex.domain.Currency.fromString(r.to)), Price(r.price), Timestamp(r.time_stamp))
+          }.asRight[Error]
+        }
+      case Left(e) => e.asLeft[List[Rate]].pure[F]
+    }
+  }
+
   override def get(pair: Rate.Pair): F[Error Either Rate] = {
-    // there is cats "either" syntax to make this prettier
     val target: Either[Error, Uri] = Uri.fromString(s"http://${config.host}:${config.port}") match {
       case Right(uri) =>
         Right((uri / "rates").withQueryParam("pair", s"${pair.from}${pair.to}"))
@@ -59,21 +82,14 @@ class OneFrameLive[F[_]: Sync](client: Client[F], config: OneFrameConfig) extend
         Left(Error.OneFrameLookupFailed(e.getMessage))
     }
 
-    println(target)
-
-    // .map is from cats.syntax.functor (more generic than scala map)
-    // `*>` is from cats.syntax.apply (a.k.a. "andThen")
-    // NOTE: OneFrame spec uses custom "token" header, not standard "Authorization token"
     target match {
-      case Right(uri) =>
-        client
-          .expect[List[OneFrameResponse]](GET(uri, org.http4s.Header.Raw(CIString("token"), config.token)))
-          .map {
-            case r :: _ => Rate(pair, Price(r.price), Timestamp(r.time_stamp)).asRight[Error]
-            case Nil    => Error.OneFrameLookupFailed("empty response").asLeft[Rate]
-          }
-      case Left(e) =>
-        e.asLeft[Rate].pure[F]
+      case Right(uri) => client
+        .expect[List[OneFrameResponse]](GET(uri, org.http4s.Header.Raw(CIString("token"), config.token)))
+        .map {
+          case r :: _ => Rate(pair, Price(r.price), Timestamp(r.time_stamp)).asRight[Error]
+          case Nil    => Error.OneFrameLookupFailed("empty response").asLeft[Rate]
+        }
+      case Left(e) => e.asLeft[Rate].pure[F]
     }
   }
 }

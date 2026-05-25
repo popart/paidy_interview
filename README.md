@@ -17,8 +17,8 @@ docker run -p 8080:8080 paidyinc/one-frame
 curl -H "token: 10dc303535874aeccc86a8251e6992f5" 'localhost:8081/rates?pair=USDJPY'
 
 # run the proxy server
-export ONE_FRAME_TOKEN=10dc303535874aeccc86a8251e6992f5
 cd forex-mtl
+export ONE_FRAME_TOKEN=10dc303535874aeccc86a8251e6992f5
 sbt run
 
 # (or for auto-restarts on file saves)

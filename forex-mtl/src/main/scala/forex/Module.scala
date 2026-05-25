@@ -10,8 +10,8 @@ import org.http4s.client.Client
 import org.http4s.implicits._
 import org.http4s.server.middleware.{ AutoSlash, Timeout }
 
-class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F]) {
 
+class Module[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F]) {
   private val ratesService: RatesService[F] = RatesServices.live[F](client, config.oneFrame)
 
   private val ratesProgram: RatesProgram[F] = RatesProgram[F](ratesService)

@@ -13,5 +13,4 @@ object Interpreters {
   //   (Sync[IO] defined in the cats-effect IO companion object)
   def live[F[_]: Sync](client: Client[F], config: OneFrameConfig): Algebra[F] =
     new OneFrameLive[F](client, config)
-
 }
