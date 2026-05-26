@@ -24,7 +24,8 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     port = 8080,
     token = "test-token",
     ttl = 5.minutes,
-    refreshInterval = 4.minutes
+    refreshInterval = 4.minutes,
+    requestTimeout = 5.seconds,
   )
 
   val stubJson: String =

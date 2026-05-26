@@ -19,7 +19,7 @@ class Application[F[_]: ConcurrentEffect: Timer] {
   def stream(ec: ExecutionContext): Stream[F, Unit] =
     for {
       config <- Config.stream("app")
-      client <- Stream.resource(BlazeClientBuilder[F](ec).resource)
+      client <- Stream.resource(BlazeClientBuilder[F](ec).withRequestTimeout(config.oneFrame.requestTimeout).resource)
       module <- Stream.resource(Module.resource[F](config, client))
       _ <- BlazeServerBuilder[F](ec)
             .bindHttp(config.http.port, config.http.host)

@@ -19,4 +19,5 @@ case class OneFrameConfig(
     token: String,
     ttl: FiniteDuration,
     refreshInterval: FiniteDuration,
+    requestTimeout: FiniteDuration,
 )
