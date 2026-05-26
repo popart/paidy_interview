@@ -26,13 +26,16 @@ object RatesStoreLive {
   final case class Snapshot(entries: Map[Rate.Pair, Rate], refreshedAt: Option[Long])
 
   private final case class OneFrameResponse(
-      from: String,
-      to: String,
+      from: Currency,
+      to: Currency,
       bid: BigDecimal,
       ask: BigDecimal,
       price: BigDecimal,
       time_stamp: OffsetDateTime
   )
+
+  private implicit val currencyDecoder: Decoder[Currency] =
+    Decoder[String].emap(Currency.fromString)
 
   private implicit val oneFrameResponseDecoder: Decoder[OneFrameResponse] = deriveDecoder
 
@@ -100,11 +103,7 @@ class RatesStoreLive[F[_]: Sync] private[interpreters] (
     client
       .expect[List[OneFrameResponse]](GET(uri, Header.Raw(CIString("token"), config.token)))
       .map(_.map { r =>
-        Rate(
-          Rate.Pair(Currency.fromString(r.from), Currency.fromString(r.to)),
-          Price(r.price),
-          Timestamp(r.time_stamp)
-        )
+        Rate(Rate.Pair(r.from, r.to), Price(r.price), Timestamp(r.time_stamp))
       })
   }
 }

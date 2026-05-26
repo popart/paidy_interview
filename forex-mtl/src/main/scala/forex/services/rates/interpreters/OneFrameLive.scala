@@ -16,9 +16,9 @@ class OneFrameLive[F[_]: Monad](store: RatesStore[F]) extends Algebra[F] {
       case Some(rate) =>
         store.isFresh.map {
           case true  => rate.asRight[Error]
-          case false => (Error.OneFrameLookupFailed("rates stale"): Error).asLeft[Rate]
+          case false => (Error.StaleRates: Error).asLeft[Rate]
         }
       case None =>
-        (Error.OneFrameLookupFailed(s"no rate for pair $pair"): Error).asLeft[Rate].pure[F]
+        (Error.PairNotFound(s"${pair.from}${pair.to}"): Error).asLeft[Rate].pure[F]
     }
 }
