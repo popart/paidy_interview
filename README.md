@@ -30,6 +30,20 @@ curl 'http://localhost:8081/rates?from=USD&to=JPY'
 
 ```
 
+# running tests
+```
+cd forex-mtl
+
+# run tests (slow tests excluded by default)
+sbt test
+
+# run only slow tests (e.g. retry behaviour with real Timer sleeps — takes ~30s)
+sbt testSlow
+
+# run everything including slow tests
+sbt testAll
+```
+
 # one-frame API (from the docker page)
 GET /rates?pair={currency_pair_0}&pair={currency_pair_1}&...pair={currency_pair_n}
 

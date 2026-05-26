@@ -6,6 +6,8 @@ import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.Stream
+
+import scala.concurrent.duration._
 import forex.config.OneFrameConfig
 import forex.domain.{ Currency, Price, Rate, Timestamp }
 import forex.services.rates.RatesStore
@@ -70,7 +72,7 @@ object RatesStoreLive {
   }
 }
 
-class RatesStoreLive[F[_]: Sync] private[interpreters] (
+class RatesStoreLive[F[_]: Sync: Timer] private[interpreters] (
     ref: Ref[F, RatesStoreLive.Snapshot],
     client: Client[F],
     config: OneFrameConfig,
@@ -81,10 +83,18 @@ class RatesStoreLive[F[_]: Sync] private[interpreters] (
 
   def refresh: F[Unit] =
     for {
-      rates <- fetchAll
+      rates <- withRetry(fetchAll, retries = 2, delay = 30.seconds)
       t     <- now
       _     <- ref.set(Snapshot(rates.map(r => r.pair -> r).toMap, Some(t)))
     } yield ()
+
+  private def withRetry[A](fa: F[A], retries: Int, delay: FiniteDuration): F[A] =
+    fa.handleErrorWith { err =>
+      if (retries > 0)
+        Timer[F].sleep(delay) >> withRetry(fa, retries - 1, delay)
+      else
+        err.raiseError[F, A]
+    }
 
   override def get(pair: Rate.Pair): F[Option[Rate]] =
     ref.get.map(_.entries.get(pair))

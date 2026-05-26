@@ -2,13 +2,16 @@ package forex.services.rates.interpreters
 
 import cats.effect.{ ContextShift, IO, Resource, Timer }
 import cats.effect.concurrent.Ref
+//import forex.Slow
 import forex.config.OneFrameConfig
 import forex.domain.{ Currency, Rate }
 import org.http4s._
 import org.http4s.client.Client
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Slow
 
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
@@ -50,7 +53,6 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     uri.host.map(_.value) shouldBe Some("localhost")
     uri.path.renderString shouldBe "/rates"
     val pairs = uri.multiParams.getOrElse("pair", Nil)
-    println(pairs)
     pairs should contain("USDJPY")
     pairs should contain("JPYUSD")
   }
@@ -92,6 +94,20 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
       .unsafeRunSync()
 
     result shouldBe true
+  }
+
+  it should "populate the cache after retrying a transient failure" taggedAs Slow in {
+    val attempts = new AtomicInteger(0)
+    val retryClient = Client.fromHttpApp(HttpApp[IO] { _ =>
+      if (attempts.incrementAndGet() <= 1) IO.raiseError(new Exception("transient"))
+      else IO.pure(Response[IO](Status.Ok).withEntity(stubJson))
+    })
+    val result = RatesStoreLive.resource[IO](retryClient, config)
+      .use(store => store.get(Rate.Pair(Currency.USD, Currency.JPY)))
+      .unsafeRunSync()
+
+    attempts.get() shouldBe 2
+    result shouldBe defined
   }
 
   it should "report stale after ttl has elapsed" in {
