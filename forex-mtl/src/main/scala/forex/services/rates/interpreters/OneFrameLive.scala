@@ -12,13 +12,12 @@ import forex.services.rates.errors._
 class OneFrameLive[F[_]: Monad](store: RatesStore[F]) extends Algebra[F] {
 
   override def get(pair: Rate.Pair): F[Error Either Rate] =
-    store.get(pair).flatMap {
-      case Some(rate) =>
-        store.isFresh.map {
-          case true  => rate.asRight[Error]
-          case false => (Error.StaleRates: Error).asLeft[Rate]
+    store.isFresh.flatMap {
+      case false => (Error.StaleRates: Error).asLeft[Rate].pure[F]
+      case true =>
+        store.get(pair).map {
+          case Some(rate) => rate.asRight[Error]
+          case None       => (Error.PairNotFound(s"${pair.from}${pair.to}"): Error).asLeft[Rate]
         }
-      case None =>
-        (Error.PairNotFound(s"${pair.from}${pair.to}"): Error).asLeft[Rate].pure[F]
     }
 }
