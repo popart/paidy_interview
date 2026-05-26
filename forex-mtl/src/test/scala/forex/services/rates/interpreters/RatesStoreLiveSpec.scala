@@ -111,6 +111,17 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     result shouldBe defined
   }
 
+  it should "fail resource acquisition when configured with an invalid host" taggedAs Slow in {
+    val badConfig = config.copy(host = "not a valid host:with:colons")
+    val result = RatesStoreLive.resource[IO](stubClient(Ref.unsafe(None), stubJson), badConfig)
+      .use(_ => IO.unit)
+      .attempt
+      .unsafeRunSync()
+
+    result shouldBe a[Left[_, _]]
+    result.left.toOption.get.getMessage should include("Invalid")
+  }
+
   it should "fail resource acquisition when upstream returns malformed JSON" taggedAs Slow in {
     val badClient = Client.fromHttpApp(HttpApp[IO] { _ =>
       IO.pure(Response[IO](Status.Ok).withEntity("not json"))

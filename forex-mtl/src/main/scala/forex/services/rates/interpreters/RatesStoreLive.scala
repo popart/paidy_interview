@@ -119,13 +119,15 @@ class RatesStoreLive[F[_]: Sync: Timer] private[interpreters] (
 
   private val fetchAll: F[List[Rate]] = {
     val pairValues = allPairs.map(p => s"${p.from}${p.to}")
-    val uri = (Uri.unsafeFromString(s"http://${config.host}:${config.port}") / "rates")
-      .withMultiValueQueryParams(Map("pair" -> pairValues))
-
-    client
-      .expect[List[OneFrameResponse]](GET(uri, Header.Raw(CIString("token"), config.token)))
-      .map(_.map { r =>
-        Rate(Rate.Pair(r.from, r.to), Price(r.price), Timestamp(r.time_stamp))
-      })
+    Sync[F]
+      .fromEither(Uri.fromString(s"http://${config.host}:${config.port}").left.map(f => new IllegalArgumentException(f.sanitized)))
+      .flatMap { baseUri =>
+        val uri = (baseUri / "rates").withMultiValueQueryParams(Map("pair" -> pairValues))
+        client
+          .expect[List[OneFrameResponse]](GET(uri, Header.Raw(CIString("token"), config.token)))
+          .map(_.map { r =>
+            Rate(Rate.Pair(r.from, r.to), Price(r.price), Timestamp(r.time_stamp))
+          })
+      }
   }
 }
