@@ -65,6 +65,13 @@ class RatesHttpRoutesSpec extends AnyFlatSpec with Matchers {
     parser.parse(body).toOption.get.hcursor.get[String]("error").toOption.get should include("stale")
   }
 
+  it should "return 400 when from and to are the same currency" in {
+    val resp = run(routesFor(successProgram), Request[IO](uri = uri"/rates?from=USD&to=USD"))
+    resp.status shouldBe Status.BadRequest
+    val body = resp.as[String].unsafeRunSync()
+    parser.parse(body).toOption.get.hcursor.get[String]("error").toOption.get should include("must differ")
+  }
+
   it should "return 404 when query params are missing" in {
     val resp = run(routesFor(successProgram), Request[IO](uri = uri"/rates?from=USD"))
     resp.status shouldBe Status.NotFound

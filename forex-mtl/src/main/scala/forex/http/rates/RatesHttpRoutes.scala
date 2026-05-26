@@ -22,11 +22,14 @@ class RatesHttpRoutes[F[_]: Sync](rates: RatesProgram[F]) extends Http4sDsl[F] {
       (fromV, toV).mapN(RatesProgramProtocol.GetRatesRequest(_, _)).fold(
         failures => BadRequest(ErrorResponse(failures.map(_.sanitized).toList.mkString(", "))),
         req =>
-          rates.get(req).flatMap {
-            case Right(rate)                        => Ok(rate.asGetApiResponse)
-            case Left(ProgramError.StaleRates)      => ServiceUnavailable(ErrorResponse("rates are stale; try again shortly"))
-            case Left(ProgramError.PairNotFound(p)) => NotFound(ErrorResponse(s"no rate for pair $p"))
-          }
+          if (req.from == req.to)
+            BadRequest(ErrorResponse("from and to currencies must differ"))
+          else
+            rates.get(req).flatMap {
+              case Right(rate)                        => Ok(rate.asGetApiResponse)
+              case Left(ProgramError.StaleRates)      => ServiceUnavailable(ErrorResponse("rates are stale; try again shortly"))
+              case Left(ProgramError.PairNotFound(p)) => NotFound(ErrorResponse(s"no rate for pair $p"))
+            }
       )
   }
 
