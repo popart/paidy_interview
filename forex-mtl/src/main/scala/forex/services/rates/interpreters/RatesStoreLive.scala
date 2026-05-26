@@ -95,7 +95,7 @@ class RatesStoreLive[F[_]: Sync: Timer] private[interpreters] (
 
   private[interpreters] def refresh: F[Unit] =
     for {
-      rates <- withRetry(fetchAll, retries = 2, delay = 30.seconds)
+      rates <- withRetry(fetchAll, retries = 2, delay = config.retryDelay)
       t     <- now
       _     <- ref.set(Snapshot(rates.map(r => r.pair -> r).toMap, Some(t)))
     } yield ()

@@ -14,7 +14,7 @@
 docker run -p 8080:8080 paidyinc/one-frame
 
 # smoke test hit the one-frame server
-curl -H "token: 10dc303535874aeccc86a8251e6992f5" 'localhost:8081/rates?pair=USDJPY'
+curl -H "token: 10dc303535874aeccc86a8251e6992f5" 'localhost:8080/rates?pair=USDJPY'
 
 # run the proxy server
 cd forex-mtl
@@ -33,15 +33,7 @@ curl 'http://localhost:8081/rates?from=USD&to=JPY'
 # running tests
 ```
 cd forex-mtl
-
-# run tests (slow tests excluded by default)
 sbt test
-
-# run only slow tests (e.g. retry behaviour with real Timer sleeps — takes ~30s)
-sbt testSlow
-
-# run everything including slow tests
-sbt testAll
 ```
 
 # one-frame API (from the docker page)

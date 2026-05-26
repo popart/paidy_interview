@@ -2,14 +2,12 @@ package forex.services.rates.interpreters
 
 import cats.effect.{ ContextShift, IO, Resource, Timer }
 import cats.effect.concurrent.Ref
-//import forex.Slow
 import forex.config.OneFrameConfig
 import forex.domain.{ Currency, Rate }
 import org.http4s._
 import org.http4s.client.Client
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.tagobjects.Slow
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.ExecutionContext.global
@@ -26,6 +24,7 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     ttl = 5.minutes,
     refreshInterval = 4.minutes,
     requestTimeout = 5.seconds,
+    retryDelay = 10.milliseconds,
   )
 
   val stubJson: String =
@@ -97,7 +96,7 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     result shouldBe true
   }
 
-  it should "populate the cache after retrying a transient failure" taggedAs Slow in {
+  it should "populate the cache after retrying a transient failure" in {
     val attempts = new AtomicInteger(0)
     val retryClient = Client.fromHttpApp(HttpApp[IO] { _ =>
       if (attempts.incrementAndGet() <= 1) IO.raiseError(new Exception("transient"))
@@ -111,7 +110,7 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     result shouldBe defined
   }
 
-  it should "fail resource acquisition when configured with an invalid host" taggedAs Slow in {
+  it should "fail resource acquisition when configured with an invalid host" in {
     val badConfig = config.copy(host = "not a valid host:with:colons")
     val result = RatesStoreLive.resource[IO](stubClient(Ref.unsafe(None), stubJson), badConfig)
       .use(_ => IO.unit)
@@ -122,7 +121,7 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     result.left.toOption.get.getMessage should include("Invalid")
   }
 
-  it should "fail resource acquisition when upstream returns malformed JSON" taggedAs Slow in {
+  it should "fail resource acquisition when upstream returns malformed JSON" in {
     val badClient = Client.fromHttpApp(HttpApp[IO] { _ =>
       IO.pure(Response[IO](Status.Ok).withEntity("not json"))
     })
@@ -134,7 +133,7 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     result shouldBe a[Left[_, _]]
   }
 
-  it should "retry before failing on malformed JSON" taggedAs Slow in {
+  it should "retry before failing on malformed JSON" in {
     val attempts = new AtomicInteger(0)
     val badClient = Client.fromHttpApp(HttpApp[IO] { _ =>
       IO.pure(Response[IO](Status.Ok).withEntity({ attempts.incrementAndGet(); "not json" }))

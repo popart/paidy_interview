@@ -20,4 +20,5 @@ case class OneFrameConfig(
     ttl: FiniteDuration,
     refreshInterval: FiniteDuration,
     requestTimeout: FiniteDuration,
+    retryDelay: FiniteDuration,
 )

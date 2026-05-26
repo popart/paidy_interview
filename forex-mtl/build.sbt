@@ -68,7 +68,3 @@ libraryDependencies ++= Seq(
   Libraries.scalaCheck     % Test,
   Libraries.catsScalaCheck % Test
 )
-
-addCommandAlias("test",     "set Test/testOptions += Tests.Argument(TestFrameworks.ScalaTest, \"-l\", \"org.scalatest.tags.Slow\"); Test/test")
-addCommandAlias("testSlow", "set Test/testOptions := Seq(Tests.Argument(TestFrameworks.ScalaTest, \"-n\", \"org.scalatest.tags.Slow\")); Test/test")
-addCommandAlias("testAll",  "set Test/testOptions := Nil; Test/test")
