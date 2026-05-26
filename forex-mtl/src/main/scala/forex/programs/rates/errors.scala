@@ -4,7 +4,7 @@ import forex.services.rates.errors.{ Error => RatesServiceError }
 
 object errors {
 
-  sealed trait Error extends Exception
+  sealed trait Error
   object Error {
     final case class PairNotFound(pair: String) extends Error
     case object StaleRates extends Error

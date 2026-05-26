@@ -7,6 +7,7 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import fs2.Stream
 
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import forex.config.OneFrameConfig
 import forex.domain.{ Currency, Price, Rate, Timestamp }
@@ -54,6 +55,10 @@ object RatesStoreLive {
   ): Resource[F, RatesStore[F]] = {
     val now: F[Long] = Clock[F].realTime(MILLISECONDS)
 
+    // TODO: replace with structured logging + metrics (e.g. log4cats + Prometheus counter);
+    //       a persistent outage will silently stale the cache with no alert until clients see StaleRates
+    def onRefreshError(@nowarn err: Throwable): F[Unit] = Sync[F].unit
+
     val acquire: F[(RatesStoreLive[F], cats.effect.Fiber[F, Unit])] =
       for {
         ref   <- Ref.of[F, Snapshot](Snapshot(Map.empty, None))
@@ -62,7 +67,7 @@ object RatesStoreLive {
         fiber <- Concurrent[F].start(
                   Stream
                     .awakeEvery[F](config.refreshInterval)
-                    .evalMap(_ => store.refresh.handleErrorWith(_ => Sync[F].unit))
+                    .evalMap(_ => store.refresh.handleErrorWith(onRefreshError))
                     .compile
                     .drain
                 )
@@ -72,6 +77,13 @@ object RatesStoreLive {
   }
 }
 
+/**
+ * Serves cached exchange rates to stay within One-Frame's 1,000 requests/day limit while
+ * supporting ≥10,000 requests/day. On startup it fetches all 72 currency pairs (9 currencies,
+ * N×(N-1)) in a single upstream call, then refreshes on a background fiber at `refreshInterval`.
+ * At the default 2-minute interval that is 24 * 60 / 2 = 720 upstream calls/day.
+ * Requests are rejected with StaleRates if the cache age exceeds `ttl` (default 4 minutes).
+ */
 class RatesStoreLive[F[_]: Sync: Timer] private[interpreters] (
     ref: Ref[F, RatesStoreLive.Snapshot],
     client: Client[F],
