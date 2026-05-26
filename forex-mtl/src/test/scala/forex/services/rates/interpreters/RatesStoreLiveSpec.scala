@@ -110,6 +110,31 @@ class RatesStoreLiveSpec extends AnyFlatSpec with Matchers {
     result shouldBe defined
   }
 
+  it should "fail resource acquisition when upstream returns malformed JSON" taggedAs Slow in {
+    val badClient = Client.fromHttpApp(HttpApp[IO] { _ =>
+      IO.pure(Response[IO](Status.Ok).withEntity("not json"))
+    })
+    val result = RatesStoreLive.resource[IO](badClient, config)
+      .use(_ => IO.unit)
+      .attempt
+      .unsafeRunSync()
+
+    result shouldBe a[Left[_, _]]
+  }
+
+  it should "retry before failing on malformed JSON" taggedAs Slow in {
+    val attempts = new AtomicInteger(0)
+    val badClient = Client.fromHttpApp(HttpApp[IO] { _ =>
+      IO.pure(Response[IO](Status.Ok).withEntity({ attempts.incrementAndGet(); "not json" }))
+    })
+    RatesStoreLive.resource[IO](badClient, config)
+      .use(_ => IO.unit)
+      .attempt
+      .unsafeRunSync()
+
+    attempts.get() shouldBe 3 // 1 initial + 2 retries
+  }
+
   it should "report stale after ttl has elapsed" in {
     val fakeNow = Ref.unsafe[IO, Long](0L)
     val noopClient = Client.fromHttpApp(HttpApp[IO] { _ =>
