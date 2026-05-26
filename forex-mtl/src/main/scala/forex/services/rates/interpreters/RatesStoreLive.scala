@@ -93,7 +93,7 @@ class RatesStoreLive[F[_]: Sync: Timer] private[interpreters] (
     with Http4sClientDsl[F] {
   import RatesStoreLive._
 
-  def refresh: F[Unit] =
+  private[interpreters] def refresh: F[Unit] =
     for {
       rates <- withRetry(fetchAll, retries = 2, delay = 30.seconds)
       t     <- now
