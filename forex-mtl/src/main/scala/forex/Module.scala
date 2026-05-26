@@ -1,10 +1,11 @@
 package forex
 
-import cats.effect.{ Concurrent, Timer }
-import cats.syntax.functor._
+import cats.effect.{ Concurrent, Resource, Timer }
 import forex.config.ApplicationConfig
 import forex.http.rates.RatesHttpRoutes
 import forex.services._
+import forex.services.rates.RatesStore
+import forex.services.rates.interpreters.RatesStoreLive
 import forex.programs._
 import org.http4s._
 import org.http4s.client.Client
@@ -14,8 +15,9 @@ import org.http4s.server.middleware.{ AutoSlash, Timeout }
 
 class Module[F[_]: Concurrent: Timer] private (
     config: ApplicationConfig,
-    ratesService: RatesService[F]
+    store: RatesStore[F]
 ) {
+  private val ratesService: RatesService[F] = RatesServices.live(store)
   private val ratesProgram: RatesProgram[F] = RatesProgram[F](ratesService)
 
   private val ratesHttpRoutes: HttpRoutes[F] = new RatesHttpRoutes[F](ratesProgram).routes
@@ -37,6 +39,6 @@ class Module[F[_]: Concurrent: Timer] private (
 }
 
 object Module {
-  def create[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F]): F[Module[F]] =
-    RatesServices.live[F](client, config.oneFrame).map(new Module[F](config, _))
+  def resource[F[_]: Concurrent: Timer](config: ApplicationConfig, client: Client[F]): Resource[F, Module[F]] =
+    RatesStoreLive.resource[F](client, config.oneFrame).map(new Module[F](config, _))
 }

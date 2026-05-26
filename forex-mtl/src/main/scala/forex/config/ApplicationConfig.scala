@@ -10,12 +10,13 @@ case class ApplicationConfig(
 case class HttpConfig(
     host: String,
     port: Int,
-    timeout: FiniteDuration
+    timeout: FiniteDuration,
 )
 
 case class OneFrameConfig(
     host: String,
     port: Int,
     token: String,
-    ttl: FiniteDuration
+    ttl: FiniteDuration,
+    refreshInterval: FiniteDuration,
 )
